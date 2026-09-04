@@ -1,5 +1,8 @@
 import { BUCKETS, STAGES, BLOCKED_BUCKETS, classify, stage, statusLine, fetchPRs } from "./github.js";
-import { getAccount, saveAccount, dropAccount, reconcile, getPollMinutes, setPollMinutes } from "./store.js";
+import {
+  getAccount, saveAccount, dropAccount, reconcile,
+  getPollMinutes, setPollMinutes, getFilters, setFilters,
+} from "./store.js";
 import { requestCode, waitForToken, isConfigured } from "./oauth.js";
 
 const els = {
@@ -81,9 +84,9 @@ function flash(card, message) {
 
 /* Filtering */
 
-// Each option cycles: off, show only, hide. Filters live for as long as the
-// panel is open and are deliberately not stored: a filter you cannot see the
-// reason for is just an empty list.
+// Each option cycles: off, show only, hide. Filters outlive the panel but not
+// the browser, so the count on the funnel and the Clear button on the empty
+// state are what stop a kept filter turning into a mystifying empty list.
 const picked = {
   buckets: { include: new Set(), exclude: new Set() },
   labels: { include: new Set(), exclude: new Set() },
@@ -107,6 +110,26 @@ function keep(pr) {
     passes("buckets", [classify(pr)]) &&
     passes("repos", [pr.repository.nameWithOwner]) &&
     passes("labels", (pr.labels?.nodes ?? []).map((l) => l.name))
+  );
+}
+
+async function restoreFilters() {
+  const saved = await getFilters();
+  if (!saved) return;
+  for (const kind of KINDS) {
+    picked[kind].include = new Set(saved[kind]?.include ?? []);
+    picked[kind].exclude = new Set(saved[kind]?.exclude ?? []);
+  }
+}
+
+function saveFilters() {
+  setFilters(
+    Object.fromEntries(
+      KINDS.map((kind) => [
+        kind,
+        { include: [...picked[kind].include], exclude: [...picked[kind].exclude] },
+      ])
+    )
   );
 }
 
@@ -195,6 +218,7 @@ function buildFilters() {
 
       els.clearFilters.hidden = !filterCount();
       paintFilterButton();
+      saveFilters();
       render(latest);
     });
   }
@@ -214,6 +238,7 @@ function clearFilters() {
   }
   els.clearFilters.hidden = true;
   paintFilterButton();
+  saveFilters();
 }
 
 function toggleFilters(open) {
@@ -566,6 +591,8 @@ els.rate.addEventListener("change", async () => {
   const { unseen = [] } = await chrome.storage.local.get("unseen");
   moved = new Set(unseen);
   chrome.runtime.sendMessage({ type: "seen" });
+  await restoreFilters();
+  paintFilterButton();
   await load();
   startTimer();
 })();

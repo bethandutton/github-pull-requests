@@ -10,6 +10,7 @@
 | A cached copy of your pull request list | `chrome.storage.local`, on your device | So the panel is not blank while it refreshes |
 | A signature per pull request | `chrome.storage.local`, on your device | To work out what changed since you last looked |
 | Your chosen refresh interval | `chrome.storage.local`, on your device | To know how often to check |
+| Which filters you have set | `chrome.storage.session`, in memory only | So the list looks the same next time you open the panel. Cleared when you quit Chrome, and never written to disk |
 
 All of it is local to your browser profile. Removing the extension removes it. You can also clear it at any time with **Remove** next to your account in the extension's settings. To withdraw the extension's access at GitHub's end as well, use **Authorised OAuth Apps** in your GitHub settings.
 

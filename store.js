@@ -46,3 +46,17 @@ export async function getPollMinutes() {
 export async function setPollMinutes(minutes) {
   await chrome.storage.local.set({ pollMinutes: minutes });
 }
+
+/* Filters
+
+   Session storage, not local: filters survive closing and reopening the panel,
+   and are gone when Chrome itself is. Nothing about them reaches the disk. */
+
+export async function getFilters() {
+  const { filters } = await chrome.storage.session.get("filters");
+  return filters ?? null;
+}
+
+export async function setFilters(filters) {
+  await chrome.storage.session.set({ filters });
+}
