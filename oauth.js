@@ -33,17 +33,13 @@ function sleep(ms, signal) {
   });
 }
 
+// Routed through the service worker. github.com sends no CORS headers, and the
+// worker is the context where an extension's host permissions reliably apply.
 async function post(url, params) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Accept: "application/json",
-    },
-    body: new URLSearchParams(params).toString(),
-  });
-  if (!res.ok) throw new Error(`GitHub returned ${res.status}.`);
-  return res.json();
+  const reply = await chrome.runtime.sendMessage({ type: "oauthPost", url, params });
+  if (!reply) throw new Error("The extension's background worker did not answer. Try reloading it.");
+  if (reply.error) throw new Error(reply.error);
+  return reply.json;
 }
 
 export function isConfigured() {

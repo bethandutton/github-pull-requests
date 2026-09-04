@@ -41,7 +41,34 @@ chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
     schedule().then(() => respond({ ok: true }));
     return true;
   }
+  if (msg?.type === "oauthPost") {
+    oauthPost(msg).then(respond);
+    return true;
+  }
 });
+
+// The panel keeps the timing of the device flow; this just makes the call, so
+// that a closed panel cannot leave a half-finished sign-in behind.
+async function oauthPost({ url, params }) {
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body: new URLSearchParams(params).toString(),
+    });
+    if (!res.ok) return { error: `GitHub returned ${res.status}.` };
+    return { json: await res.json() };
+  } catch (e) {
+    return {
+      error:
+        "Could not reach github.com. Check the extension has access to github.com " +
+        "in chrome://extensions, then reload it.",
+    };
+  }
+}
 
 async function paintBadge() {
   const { unseen = [], blocked = 0 } = await chrome.storage.local.get(["unseen", "blocked"]);
