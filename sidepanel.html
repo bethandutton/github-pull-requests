@@ -57,6 +57,7 @@
       <p>Approve this extension on GitHub and your open pull requests appear here. No token to copy.</p>
       <button id="go-connect" class="primary">Connect GitHub</button>
       <p class="note approve">You will be asked to grant access to your repositories, so that private ones show up too. This extension only ever reads.</p>
+      <button id="use-token" class="linky">Use an access token instead</button>
       <p class="err" id="connect-err" hidden></p>
     </section>
 
@@ -70,6 +71,47 @@
       <p class="waiting" id="waiting">Waiting for you to approve it on GitHub…</p>
       <button id="cancel-device" class="linky">Cancel</button>
       <p class="err" id="device-err" hidden></p>
+    </section>
+
+    <section class="settings-screen" id="token-screen" hidden>
+      <div class="settings-head">
+        <h2>Use an access token</h2>
+        <button id="close-token" class="icon-btn" title="Back" aria-label="Back">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path fill="currentColor" d="M4.3 3.2 8 6.9l3.7-3.7 1.1 1.1L9.1 8l3.7 3.7-1.1 1.1L8 9.1l-3.7 3.7-1.1-1.1L6.9 8 3.2 4.3l1.1-1.1Z"/>
+          </svg>
+        </button>
+      </div>
+
+      <p class="note">An alternative to signing in. Worth using if your organisation restricts OAuth apps, or if you would rather hold a token you can expire on your own terms.</p>
+
+      <details class="help" open>
+        <summary>Where to find a token on GitHub</summary>
+        <ol class="where">
+          <li>Click your profile photo, top right of github.com, then <b>Settings</b>.</li>
+          <li>Scroll to the bottom of the left sidebar and open <b>Developer settings</b>.</li>
+          <li>Open <b>Personal access tokens</b>, then <b>Tokens (classic)</b>.</li>
+          <li>Press <b>Generate new token</b>, then <b>Generate new token (classic)</b>.</li>
+          <li>Tick the boxes below, set an expiry, then <b>Generate token</b>.</li>
+          <li>Copy it. It starts with <code>ghp_</code> and GitHub shows it only once.</li>
+        </ol>
+
+        <p class="note">What to tick:</p>
+        <ul class="scopes">
+          <li><b>repo</b>, to see pull requests in private repositories. Ticking it ticks everything nested under it, which is normal.</li>
+          <li>Nothing else. No other box is needed, so leave them all clear.</li>
+          <li>Only ever work in public repositories? A token with nothing ticked at all is enough.</li>
+        </ul>
+        <p class="note">Use a <b>classic</b> token. Fine-grained tokens are tighter, but GitHub's GraphQL search does not reliably support them yet, so the list can come back empty.</p>
+
+        <a class="shortcut" id="token-link" href="#">Jump to that page with repo pre-ticked</a>
+      </details>
+
+      <input id="token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false" aria-label="GitHub access token" />
+      <div class="setup-actions">
+        <button id="save" class="primary">Save token</button>
+      </div>
+      <p class="err" id="err" hidden></p>
     </section>
 
     <section class="settings-screen" id="setup" hidden>
@@ -90,6 +132,7 @@
 
       <div id="add-account">
         <button id="connect-again" class="primary">Connect GitHub</button>
+        <button id="use-token-again" class="linky spread">Use an access token instead</button>
       </div>
 
       <h3 class="spaced">Refresh</h3>

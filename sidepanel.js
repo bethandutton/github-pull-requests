@@ -5,11 +5,21 @@ import {
 } from "./store.js";
 import { requestCode, waitForToken, isConfigured } from "./oauth.js";
 
+const TOKEN_URL = "https://github.com/settings/tokens/new?scopes=repo&description=PR%20Inbox";
+
 const els = {
   content: document.getElementById("content"),
   connect: document.getElementById("connect"),
   goConnect: document.getElementById("go-connect"),
   connectErr: document.getElementById("connect-err"),
+  useToken: document.getElementById("use-token"),
+  useTokenAgain: document.getElementById("use-token-again"),
+  tokenScreen: document.getElementById("token-screen"),
+  closeToken: document.getElementById("close-token"),
+  token: document.getElementById("token"),
+  tokenLink: document.getElementById("token-link"),
+  save: document.getElementById("save"),
+  err: document.getElementById("err"),
   device: document.getElementById("device"),
   userCode: document.getElementById("user-code"),
   openGithub: document.getElementById("open-github"),
@@ -405,6 +415,7 @@ function show(which) {
   els.content.hidden = which !== "list";
   els.connect.hidden = which !== "connect";
   els.device.hidden = which !== "device";
+  els.tokenScreen.hidden = which !== "token";
   els.setup.hidden = which !== "settings";
   els.refresh.hidden = which !== "list";
   els.filter.hidden = which !== "list";
@@ -414,6 +425,10 @@ function show(which) {
 function renderAccount(account) {
   els.accounts.hidden = !account;
   els.swapNote.hidden = !account;
+  els.swapNote.textContent =
+    account?.method === "token"
+      ? "Removing it here clears the token from this browser. To retire the token itself, delete it under Personal access tokens in your GitHub settings."
+      : "Removing it here signs you out of the panel. To withdraw access altogether, use Authorised OAuth Apps in your GitHub settings.";
   els.addAccount.hidden = Boolean(account);
 
   if (!account) {
@@ -528,7 +543,7 @@ async function connect() {
     if (signal.aborted) return;
 
     const { viewer } = await fetchPRs(token);
-    await saveAccount({ login: viewer.login, avatarUrl: viewer.avatarUrl, token });
+    await saveAccount({ login: viewer.login, avatarUrl: viewer.avatarUrl, token, method: "oauth" });
     await chrome.runtime.sendMessage({ type: "poll" });
     load();
   } catch (e) {
@@ -547,6 +562,56 @@ async function cancelConnect() {
 }
 
 /* Wiring */
+
+async function openTokenScreen() {
+  els.err.hidden = true;
+  els.token.value = "";
+  show("token");
+  els.token.focus();
+}
+
+async function leaveTokenScreen() {
+  const account = await getAccount();
+  if (account) openSettings();
+  else show("connect");
+}
+
+els.tokenLink.href = TOKEN_URL;
+els.tokenLink.addEventListener("click", (e) => {
+  e.preventDefault();
+  openTab(TOKEN_URL);
+});
+
+els.useToken.addEventListener("click", openTokenScreen);
+els.useTokenAgain.addEventListener("click", openTokenScreen);
+els.closeToken.addEventListener("click", leaveTokenScreen);
+
+els.save.addEventListener("click", async () => {
+  const token = els.token.value.trim();
+  if (!token) return;
+  els.save.disabled = true;
+
+  let viewer;
+  try {
+    ({ viewer } = await fetchPRs(token));
+  } catch (e) {
+    els.err.textContent = e.message;
+    els.err.hidden = false;
+    els.save.disabled = false;
+    return;
+  }
+
+  await saveAccount({ login: viewer.login, avatarUrl: viewer.avatarUrl, token, method: "token" });
+  await chrome.runtime.sendMessage({ type: "poll" });
+  els.token.value = "";
+  els.err.hidden = true;
+  els.save.disabled = false;
+  load();
+});
+
+els.token.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") els.save.click();
+});
 
 els.goConnect.addEventListener("click", connect);
 els.connectAgain.addEventListener("click", connect);

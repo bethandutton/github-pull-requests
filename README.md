@@ -15,6 +15,8 @@ Until it's on the Chrome Web Store:
 5. Pin the icon to your toolbar and click it.
 6. Press **Connect GitHub**, approve the code on github.com, and you're in.
 
+If your organisation restricts OAuth apps, or you would rather hold a credential you can expire yourself, **Use an access token instead** on the same screen takes a classic personal access token with the `repo` scope. Use a classic one: GitHub's GraphQL search does not reliably support fine-grained tokens yet, so the list can come back empty.
+
 ### Setting up the OAuth app
 
 The extension signs you in with GitHub's device flow, so there is nothing to copy and paste and no client secret to hide. It does need an OAuth app of your own:

@@ -3,7 +3,7 @@
 // 1.2 and earlier kept a bare token under `token`, with no account details.
 // The login and avatar get filled in by the first successful fetch.
 async function migrate(token) {
-  const account = { login: "Connected account", avatarUrl: "", token };
+  const account = { login: "Connected account", avatarUrl: "", token, method: "token" };
   await chrome.storage.local.set({ account });
   await chrome.storage.local.remove("token");
   return account;
@@ -16,8 +16,8 @@ export async function getAccount() {
   return null;
 }
 
-export async function saveAccount({ login, avatarUrl, token }) {
-  const account = { login, avatarUrl, token };
+export async function saveAccount({ login, avatarUrl, token, method = "oauth" }) {
+  const account = { login, avatarUrl, token, method };
   await chrome.storage.local.set({ account });
   return account;
 }

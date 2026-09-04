@@ -6,7 +6,7 @@
 
 | Data | Where | Why |
 | --- | --- | --- |
-| The GitHub access token you granted when you approved the extension, with the login and avatar it belongs to | `chrome.storage.local`, on your device | To authenticate requests to the GitHub API and to show which account is connected |
+| Your GitHub access token, either granted when you approved the extension or pasted in as a personal access token, with the login and avatar it belongs to | `chrome.storage.local`, on your device | To authenticate requests to the GitHub API and to show which account is connected |
 | A cached copy of your pull request list | `chrome.storage.local`, on your device | So the panel is not blank while it refreshes |
 | A signature per pull request | `chrome.storage.local`, on your device | To work out what changed since you last looked |
 | Your chosen refresh interval | `chrome.storage.local`, on your device | To know how often to check |
