@@ -1,10 +1,18 @@
 {
   "manifest_version": 3,
   "name": "GitHub Pull Requests",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Your open pull requests in the side panel, approved first, with a dot when something changes.",
-  "permissions": ["sidePanel", "storage", "alarms"],
-  "host_permissions": ["https://api.github.com/"],
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "alarms",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "https://api.github.com/",
+    "https://github.com/*"
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
