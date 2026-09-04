@@ -2,7 +2,7 @@
 
 A Chrome side panel that lists your open pull requests as cards, best news first, and puts a dot on the toolbar icon when something moves.
 
-No build step, no dependencies, no backend. Five files and a token.
+No build step, no dependencies, no backend. Six files and a token.
 
 ## Install
 
@@ -18,6 +18,10 @@ Until it's on the Chrome Web Store:
 
 On github.com: profile photo (top right) → **Settings** → **Developer settings** at the bottom of the left sidebar → **Personal access tokens** → **Tokens (classic)** → **Generate new token (classic)** → tick **repo** → **Generate token**.
 
+**What to tick:** just **repo**, which is what lets the panel see pull requests in private repositories. Ticking it ticks everything nested underneath, which is normal. Nothing else is needed, so leave every other box clear. If you only ever work in public repositories, a token with nothing ticked at all is enough.
+
+GitHub bundles read and write into that single **repo** box, so it grants more than this extension uses. The panel only ever reads, and only from `api.github.com`.
+
 Copy it straight away, GitHub only shows it once. Or use the shortcut link in the panel's settings, which opens that page with `repo` already ticked.
 
 ## What it does
@@ -26,6 +30,10 @@ Copy it straight away, GitHub only shows it once. Or use the shortcut link in th
 - Click a card to open that pull request in a new tab
 - A green dot on the icon means something changed since you last looked
 - A red number means that many things are blocked on you
+- The funnel filters the list by status, repository and tag. Click an option to show only that, click again to hide it
+- Click a card's title to copy its branch name
+- Clicking a card you already have open focuses that tab and refreshes it rather than opening a duplicate
+- The cog holds your account and how often to refresh
 
 ### Ordering
 
@@ -33,14 +41,15 @@ Approved and ready to merge, approved with checks running, waiting on review, ch
 
 ### On each card
 
-Status pill, age, title, repo and number, head into base branch, up to three labels in their GitHub colours, author, comment count, files changed, additions and deletions, and a four-segment track showing where it sits in the flow (draft → in review → checks → mergeable).
+Status pill, age, title (click it to copy the branch name), repo and number, head into base branch, up to three labels in their GitHub colours, author, comment count, files changed, additions and deletions, and a four-segment track showing where it sits in the flow (draft → in review → checks → mergeable).
 
 ## How it works
 
 | File | Job |
 | --- | --- |
-| `manifest.json` | MV3. `sidePanel`, `storage`, `alarms`, and one host permission for `api.github.com` |
+| `manifest.json` | MV3. `sidePanel`, `storage`, `alarms`, and host permissions for `api.github.com` and `github.com` |
 | `github.js` | The GraphQL query and all the status logic, shared by both contexts |
+| `store.js` | The account and the refresh interval, in `chrome.storage.local` |
 | `background.js` | Service worker. Polls every 5 minutes, diffs against the last snapshot, paints the badge |
 | `sidepanel.html/css/js` | The panel itself |
 
@@ -54,13 +63,13 @@ Your token is stored in `chrome.storage.local` and never leaves your browser exc
 
 ## Configuration
 
+The refresh interval is in the extension's own settings, under the cog.
+
 Scope to a single org by editing the search strings in `QUERY` in `github.js`:
 
 ```js
 mine: search(query: "is:open is:pr author:@me org:yourorg archived:false", ...)
 ```
-
-Poll interval is `POLL_MINUTES` in `background.js`.
 
 ## Known limits
 
@@ -68,6 +77,9 @@ Poll interval is `POLL_MINUTES` in `background.js`.
 - The icon is currently GitHub's own mark. GitHub's logo guidelines don't permit their mark as a third-party app icon, so it needs replacing before any store submission.
 - Same goes for the name: GitHub's trademark policy asks that "GitHub" not lead a third-party product name. Fine for a repo, worth a rethink before publishing.
 - Nothing is cached beyond the last successful response, so a cold start with no network shows an error rather than stale data.
+- Filters reset when the panel closes. A filter you cannot see the reason for is just an empty list.
+- Finding an already-open tab needs a `github.com` host permission. Nothing on the page is read or changed, but it is a permission a reviewer will ask about.
+- Tags come from the three labels the card already shows, so a fourth label on a busy pull request is not filterable.
 
 ## Licence
 
