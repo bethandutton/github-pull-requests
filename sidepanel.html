@@ -22,6 +22,12 @@
             <path fill="currentColor" d="M8 .4 11.2 2.6 8 4.8V.4Z"/>
           </svg>
         </button>
+        <button id="filter" class="icon-btn" title="Filter" aria-label="Filter" aria-haspopup="dialog" aria-expanded="false">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path fill="currentColor" d="M1.8 2.4h12.4a.6.6 0 0 1 .46.99L10 9.1v4.03a.6.6 0 0 1-.33.54l-2.4 1.2a.6.6 0 0 1-.87-.54V9.1L1.34 3.39a.6.6 0 0 1 .46-.99Z"/>
+          </svg>
+          <span class="fcount" id="fcount" hidden></span>
+        </button>
         <button id="settings" class="icon-btn" title="Settings" aria-label="Settings">
           <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
             <path fill="currentColor" d="M8 5.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8Zm0 1.5a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8Z"/>
@@ -30,6 +36,14 @@
         </button>
       </span>
     </header>
+
+    <div class="popover" id="filters" hidden role="dialog" aria-label="Filter pull requests">
+      <div class="pop-head">
+        <h2>Filter</h2>
+        <button id="clear-filters" class="linky" hidden>Clear all</button>
+      </div>
+      <div id="filter-body"></div>
+    </div>
 
     <main id="content">
       <p class="empty">Loading…</p>
@@ -54,27 +68,50 @@
         </button>
       </div>
 
-      <h3>GitHub access token</h3>
+      <h3>GitHub account</h3>
       <p class="note">Stored in this browser only. Sent to api.github.com and nowhere else.</p>
 
-      <p class="note">Where to find it on GitHub:</p>
-      <ol class="where">
-        <li>Click your profile photo, top right of github.com, then <b>Settings</b>.</li>
-        <li>Scroll to the bottom of the left sidebar and open <b>Developer settings</b>.</li>
-        <li>Open <b>Personal access tokens</b>, then <b>Tokens (classic)</b>.</li>
-        <li>Press <b>Generate new token</b>, then <b>Generate new token (classic)</b>.</li>
-        <li>Tick the <b>repo</b> checkbox, set an expiry, then <b>Generate token</b>.</li>
-        <li>Copy it. It starts with <code>ghp_</code> and GitHub shows it only once.</li>
-      </ol>
+      <ul class="accounts" id="accounts" hidden></ul>
+      <p class="note" id="swap-note" hidden>Remove it to connect a different account.</p>
 
-      <a class="shortcut" id="token-link" href="#">Jump to that page with repo pre-ticked</a>
+      <div id="add-account">
+        <details class="help" id="help">
+          <summary>Where to find a token on GitHub</summary>
+          <ol class="where">
+            <li>Click your profile photo, top right of github.com, then <b>Settings</b>.</li>
+            <li>Scroll to the bottom of the left sidebar and open <b>Developer settings</b>.</li>
+            <li>Open <b>Personal access tokens</b>, then <b>Tokens (classic)</b>.</li>
+            <li>Press <b>Generate new token</b>, then <b>Generate new token (classic)</b>.</li>
+            <li>Tick the boxes below, set an expiry, then <b>Generate token</b>.</li>
+            <li>Copy it. It starts with <code>ghp_</code> and GitHub shows it only once.</li>
+          </ol>
 
-      <input id="token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false" aria-label="GitHub access token" />
-      <div class="setup-actions">
-        <button id="save" class="primary">Save token</button>
-        <button id="forget" class="ghost" hidden>Remove token</button>
+          <p class="note">What to tick:</p>
+          <ul class="scopes">
+            <li><b>repo</b>, to see pull requests in private repositories. Ticking it ticks everything nested under it, which is normal.</li>
+            <li>Nothing else. No other box is needed, so leave them all clear.</li>
+            <li>Only ever work in public repositories? A token with nothing ticked at all is enough.</li>
+          </ul>
+          <p class="note">GitHub bundles read and write into that one <b>repo</b> box, so it grants more than this extension uses. The panel only ever reads, and only from <code>api.github.com</code>.</p>
+
+          <a class="shortcut" id="token-link" href="#">Jump to that page with repo pre-ticked</a>
+        </details>
+
+        <input id="token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false" aria-label="GitHub access token" />
+        <div class="setup-actions">
+          <button id="save" class="primary">Connect</button>
+        </div>
+        <p class="err" id="err" hidden></p>
       </div>
-      <p class="err" id="err" hidden></p>
+
+      <h3 class="spaced">Refresh</h3>
+      <p class="note">How often to check GitHub in the background. More often means a faster dot, and more of your hourly API allowance.</p>
+      <select id="rate" aria-label="How often to check GitHub">
+        <option value="1">Every minute</option>
+        <option value="5">Every 5 minutes</option>
+        <option value="15">Every 15 minutes</option>
+        <option value="30">Every 30 minutes</option>
+      </select>
     </section>
 
     <script type="module" src="sidepanel.js"></script>
