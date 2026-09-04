@@ -2,27 +2,31 @@
 
 A Chrome side panel that lists your open pull requests as cards, best news first, and puts a dot on the toolbar icon when something moves.
 
-No build step, no dependencies, no backend. Six files and a token.
+No build step, no dependencies, no backend. Seven files and a sign-in.
 
 ## Install
 
 Until it's on the Chrome Web Store:
 
 1. Clone or download this repo.
-2. Go to `chrome://extensions` and turn on Developer mode.
-3. Press **Load unpacked** and select the folder.
-4. Pin the icon to your toolbar and click it.
-5. Press **Open settings** and paste a GitHub token. The panel tells you where to find it.
+2. Create a GitHub OAuth app and put its Client ID in `oauth.js` (see below).
+3. Go to `chrome://extensions` and turn on Developer mode.
+4. Press **Load unpacked** and select the folder.
+5. Pin the icon to your toolbar and click it.
+6. Press **Connect GitHub**, approve the code on github.com, and you're in.
 
-### Getting a token
+### Setting up the OAuth app
 
-On github.com: profile photo (top right) → **Settings** → **Developer settings** at the bottom of the left sidebar → **Personal access tokens** → **Tokens (classic)** → **Generate new token (classic)** → tick **repo** → **Generate token**.
+The extension signs you in with GitHub's device flow, so there is nothing to copy and paste and no client secret to hide. It does need an OAuth app of your own:
 
-**What to tick:** just **repo**, which is what lets the panel see pull requests in private repositories. Ticking it ticks everything nested underneath, which is normal. Nothing else is needed, so leave every other box clear. If you only ever work in public repositories, a token with nothing ticked at all is enough.
+1. On github.com: profile photo → **Settings** → **Developer settings** → **OAuth Apps** → **New OAuth App**.
+2. Give it any name and homepage URL. The callback URL is not used, so anything valid will do.
+3. Tick **Enable Device Flow**. This is the part that matters.
+4. Copy the **Client ID** into `CLIENT_ID` in `oauth.js`.
 
-GitHub bundles read and write into that single **repo** box, so it grants more than this extension uses. The panel only ever reads, and only from `api.github.com`.
+The Client ID is public by design, which is why it can sit in the source. Do not add the client secret; device flow does not use one, and it must never ship in an extension.
 
-Copy it straight away, GitHub only shows it once. Or use the shortcut link in the panel's settings, which opens that page with `repo` already ticked.
+The extension asks for the `repo` scope so that private repositories show up. GitHub bundles read and write into that one scope, so it grants more than the panel uses. It only ever reads, and only from `api.github.com`. You can withdraw access at any time under **Authorised OAuth Apps** in your GitHub settings.
 
 ## What it does
 
@@ -49,6 +53,7 @@ Status pill, age, title (click it to copy the branch name), repo and number, hea
 | --- | --- |
 | `manifest.json` | MV3. `sidePanel`, `storage`, `alarms`, and host permissions for `api.github.com` and `github.com` |
 | `github.js` | The GraphQL query and all the status logic, shared by both contexts |
+| `oauth.js` | The device flow: ask for a code, wait for it to be approved |
 | `store.js` | The account and the refresh interval, in `chrome.storage.local` |
 | `background.js` | Service worker. Polls every 5 minutes, diffs against the last snapshot, paints the badge |
 | `sidepanel.html/css/js` | The panel itself |
@@ -73,9 +78,10 @@ mine: search(query: "is:open is:pr author:@me org:yourorg archived:false", ...)
 
 ## Known limits
 
-- Classic tokens with `repo` scope are all-or-nothing. OAuth device flow or a GitHub App would be a better fit for a public release, and is the main thing standing between this and a store listing.
+- The `repo` scope is still all-or-nothing: it covers every repository you can reach, and includes write access the panel never uses. A GitHub App with fine-grained permissions would be tighter, at the cost of needing an install on each organisation.
 - The icon is currently GitHub's own mark. GitHub's logo guidelines don't permit their mark as a third-party app icon, so it needs replacing before any store submission.
 - Same goes for the name: GitHub's trademark policy asks that "GitHub" not lead a third-party product name. Fine for a repo, worth a rethink before publishing.
+- Anyone cloning this needs their own OAuth app. There is no shared Client ID in the repo.
 - Nothing is cached beyond the last successful response, so a cold start with no network shows an error rather than stale data.
 - Filters reset when the panel closes. A filter you cannot see the reason for is just an empty list.
 - Finding an already-open tab needs a `github.com` host permission. Nothing on the page is read or changed, but it is a permission a reviewer will ask about.

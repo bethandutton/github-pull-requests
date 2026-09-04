@@ -1,23 +1,26 @@
 import { BUCKETS, STAGES, BLOCKED_BUCKETS, classify, stage, statusLine, fetchPRs } from "./github.js";
 import { getAccount, saveAccount, dropAccount, reconcile, getPollMinutes, setPollMinutes } from "./store.js";
-
-const TOKEN_URL = "https://github.com/settings/tokens/new?scopes=repo&description=PR%20Rail";
+import { requestCode, waitForToken, isConfigured } from "./oauth.js";
 
 const els = {
   content: document.getElementById("content"),
   connect: document.getElementById("connect"),
+  goConnect: document.getElementById("go-connect"),
+  connectErr: document.getElementById("connect-err"),
+  device: document.getElementById("device"),
+  userCode: document.getElementById("user-code"),
+  openGithub: document.getElementById("open-github"),
+  copyCode: document.getElementById("copy-code"),
+  waiting: document.getElementById("waiting"),
+  cancelDevice: document.getElementById("cancel-device"),
+  deviceErr: document.getElementById("device-err"),
   setup: document.getElementById("setup"),
-  token: document.getElementById("token"),
-  tokenLink: document.getElementById("token-link"),
-  save: document.getElementById("save"),
   accounts: document.getElementById("accounts"),
   addAccount: document.getElementById("add-account"),
+  connectAgain: document.getElementById("connect-again"),
   swapNote: document.getElementById("swap-note"),
-  help: document.getElementById("help"),
   rate: document.getElementById("rate"),
   closeSetup: document.getElementById("close-setup"),
-  goSettings: document.getElementById("go-settings"),
-  err: document.getElementById("err"),
   refresh: document.getElementById("refresh"),
   settings: document.getElementById("settings"),
   filter: document.getElementById("filter"),
@@ -376,6 +379,7 @@ function render(data) {
 function show(which) {
   els.content.hidden = which !== "list";
   els.connect.hidden = which !== "connect";
+  els.device.hidden = which !== "device";
   els.setup.hidden = which !== "settings";
   els.refresh.hidden = which !== "list";
   els.filter.hidden = which !== "list";
@@ -386,7 +390,6 @@ function renderAccount(account) {
   els.accounts.hidden = !account;
   els.swapNote.hidden = !account;
   els.addAccount.hidden = Boolean(account);
-  els.help.open = !account;
 
   if (!account) {
     els.accounts.innerHTML = "";
@@ -412,9 +415,7 @@ async function openSettings() {
   renderAccount(account);
   els.closeSetup.hidden = !account;
   els.rate.value = String(await getPollMinutes());
-  els.err.hidden = true;
   show("settings");
-  if (!account) els.token.focus();
 }
 
 /* Load */
@@ -452,13 +453,80 @@ async function load({ silent } = {}) {
 
 /* Wiring */
 
-els.tokenLink.href = TOKEN_URL;
-els.tokenLink.addEventListener("click", (e) => {
-  e.preventDefault();
-  openTab(TOKEN_URL);
-});
+/* Connecting */
 
-els.goSettings.addEventListener("click", openSettings);
+let pending = null; // AbortController for a device flow in progress
+
+function connectError(where, message) {
+  where.textContent = message;
+  where.hidden = false;
+}
+
+async function connect() {
+  if (!isConfigured()) {
+    show("connect");
+    connectError(els.connectErr, "This build has no GitHub app set up yet, so it cannot connect.");
+    return;
+  }
+
+  els.connectErr.hidden = true;
+  els.deviceErr.hidden = true;
+  els.waiting.hidden = false;
+  els.userCode.textContent = "········";
+  show("device");
+
+  pending?.abort();
+  pending = new AbortController();
+  const { signal } = pending;
+
+  try {
+    const code = await requestCode();
+    if (signal.aborted) return;
+
+    els.userCode.textContent = code.user_code;
+    els.openGithub.onclick = () => openTab(code.verification_uri);
+    els.copyCode.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(code.user_code);
+        els.copyCode.textContent = "Copied";
+        setTimeout(() => (els.copyCode.textContent = "Copy code"), 1400);
+      } catch {
+        els.copyCode.textContent = "Could not copy";
+        setTimeout(() => (els.copyCode.textContent = "Copy code"), 1400);
+      }
+    };
+
+    // Open GitHub for them so the code is one paste away.
+    openTab(code.verification_uri);
+
+    const token = await waitForToken(code, { signal });
+    if (signal.aborted) return;
+
+    const { viewer } = await fetchPRs(token);
+    await saveAccount({ login: viewer.login, avatarUrl: viewer.avatarUrl, token });
+    await chrome.runtime.sendMessage({ type: "poll" });
+    load();
+  } catch (e) {
+    if (signal.aborted || e.message === "Cancelled.") return;
+    els.waiting.hidden = true;
+    connectError(els.deviceErr, e.message);
+  }
+}
+
+async function cancelConnect() {
+  pending?.abort();
+  pending = null;
+  const account = await getAccount();
+  if (account) openSettings();
+  else show("connect");
+}
+
+/* Wiring */
+
+els.goConnect.addEventListener("click", connect);
+els.connectAgain.addEventListener("click", connect);
+els.cancelDevice.addEventListener("click", cancelConnect);
+
 els.settings.addEventListener("click", openSettings);
 els.closeSetup.addEventListener("click", () => load());
 els.refresh.addEventListener("click", () => load({ silent: true }));
@@ -491,33 +559,6 @@ els.rate.addEventListener("change", async () => {
   await setPollMinutes(Number(els.rate.value));
   await chrome.runtime.sendMessage({ type: "reschedule" });
   startTimer();
-});
-
-els.save.addEventListener("click", async () => {
-  const token = els.token.value.trim();
-  if (!token) return;
-  els.save.disabled = true;
-
-  let viewer;
-  try {
-    ({ viewer } = await fetchPRs(token));
-  } catch (e) {
-    els.err.textContent = e.message;
-    els.err.hidden = false;
-    els.save.disabled = false;
-    return;
-  }
-
-  await saveAccount({ login: viewer.login, avatarUrl: viewer.avatarUrl, token });
-  await chrome.runtime.sendMessage({ type: "poll" });
-  els.token.value = "";
-  els.err.hidden = true;
-  els.save.disabled = false;
-  load();
-});
-
-els.token.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") els.save.click();
 });
 
 // Opening the panel counts as looking: grab what changed, then clear the dot.
