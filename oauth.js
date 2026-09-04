@@ -2,7 +2,7 @@
 // why it suits an extension: nothing here needs hiding.
 
 // From the OAuth app at github.com/settings/developers, with Device Flow enabled.
-export const CLIENT_ID = "";
+export const CLIENT_ID = "Ov23liznPkazPmA5tkiJ";
 
 const DEVICE_CODE_URL = "https://github.com/login/device/code";
 const TOKEN_URL = "https://github.com/login/oauth/access_token";
