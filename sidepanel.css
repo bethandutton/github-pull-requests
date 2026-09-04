@@ -38,6 +38,9 @@
 
 * { box-sizing: border-box; }
 
+/* A class selector carrying a display beats the browser's [hidden], so say it outright. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--bg);
