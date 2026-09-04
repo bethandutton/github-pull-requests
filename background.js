@@ -1,18 +1,21 @@
 import { fetchPRs, diff, blockedCount } from "./github.js";
-
-const POLL_MINUTES = 5;
+import { getAccount, reconcile, getPollMinutes } from "./store.js";
 
 chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
   .catch((err) => console.error(err));
 
+async function schedule() {
+  chrome.alarms.create("poll", { periodInMinutes: await getPollMinutes() });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.alarms.create("poll", { periodInMinutes: POLL_MINUTES });
+  schedule();
   poll();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  chrome.alarms.create("poll", { periodInMinutes: POLL_MINUTES });
+  schedule();
   poll();
 });
 
@@ -34,16 +37,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
     poll().then((r) => respond(r));
     return true;
   }
+  if (msg?.type === "reschedule") {
+    schedule().then(() => respond({ ok: true }));
+    return true;
+  }
 });
 
 async function paintBadge() {
-  const { unseen = [], blocked = 0, token } = await chrome.storage.local.get([
-    "unseen",
-    "blocked",
-    "token",
-  ]);
+  const { unseen = [], blocked = 0 } = await chrome.storage.local.get(["unseen", "blocked"]);
+  const account = await getAccount();
 
-  if (!token) {
+  if (!account) {
     chrome.action.setBadgeText({ text: "" });
     return;
   }
@@ -69,15 +73,14 @@ async function paintBadge() {
 }
 
 async function poll() {
-  const { token, snapshot = {}, unseen = [] } = await chrome.storage.local.get([
-    "token",
-    "snapshot",
-    "unseen",
-  ]);
-  if (!token) return { ok: false };
+  const account = await getAccount();
+  if (!account) return { ok: false };
+
+  const { snapshot = {}, unseen = [] } = await chrome.storage.local.get(["snapshot", "unseen"]);
 
   try {
-    const data = await fetchPRs(token);
+    const data = await fetchPRs(account.token);
+    await reconcile(data.viewer);
     const { snapshot: next, changed } = diff(data, snapshot);
     const merged = [...new Set([...unseen, ...changed])].filter((id) => id in next);
 

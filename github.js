@@ -31,6 +31,7 @@ const PR_FIELDS = `
 
 export const QUERY = `
 query {
+  viewer { login avatarUrl(size: 48) }
   mine: search(query: "is:open is:pr author:@me archived:false", type: ISSUE, first: 40) {
     nodes { ${PR_FIELDS} }
   }
@@ -135,6 +136,7 @@ export async function fetchPRs(token) {
   const json = await res.json();
   if (json.errors?.length) throw new Error(json.errors[0].message);
   return {
+    viewer: json.data.viewer,
     mine: json.data.mine.nodes.filter(Boolean),
     toReview: json.data.toReview.nodes.filter(Boolean),
   };
